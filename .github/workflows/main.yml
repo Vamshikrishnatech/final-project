@@ -1,0 +1,78 @@
+name: Deploy Node.js App to EC2
+
+on:
+  push:
+    branches:
+      - main  # Deploy when changes are pushed to the 'main' branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the code from GitHub
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Node.js and install dependencies
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'  # Use your Node.js version
+
+      - name: Install dependencies
+        run: npm install
+
+      # Step 3: Build the application (for TypeScript or any other build steps)
+      - name: Build the application
+        run: npm run build
+
+      # Step 4: SSH into EC2 and Install Apache HTTPD and other dependencies
+      - name: Install Apache and set up reverse proxy
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ${{ secrets.EC2_SSH_PRIVATE_KEY }} ubuntu@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+            # Update and install dependencies
+            sudo apt update
+            sudo apt install -y apache2
+            sudo apt install -y nodejs npm pm2
+
+            # Enable Apache modules for reverse proxy
+            sudo a2enmod proxy
+            sudo a2enmod proxy_http
+            sudo a2enmod rewrite
+
+            # Configure Apache reverse proxy
+            echo "
+            <VirtualHost *:80>
+                ServerAdmin webmaster@localhost
+                DocumentRoot /var/www/html
+
+                # Reverse Proxy Setup
+                ProxyPass / http://localhost:3000/
+                ProxyPassReverse / http://localhost:3000/
+
+                # Optional: Allow WebSocket connections
+                ProxyPass /ws/ ws://localhost:3000/ws/
+                ProxyPassReverse /ws/ ws://localhost:3000/ws/
+            </VirtualHost>
+            " | sudo tee /etc/apache2/sites-available/000-default.conf
+
+            # Restart Apache to apply changes
+            sudo systemctl restart apache2
+
+            # Pull the latest code from GitHub and install dependencies
+            cd /home/ubuntu/app || git clone <your-repo-url>
+            cd /home/ubuntu/app
+            git pull origin main
+            npm install
+            npm run build
+
+            # Start the app using PM2 (or npm)
+            pm2 start npm --name "node-app" -- run server
+            pm2 startup
+            pm2 save
+            EOF
+
+      # Step 5: Notify Deployment Success
+      - name: Notify Deployment Success
+        run: echo "Deployment was successful!"
