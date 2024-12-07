@@ -27,10 +27,18 @@ jobs:
       - name: Build the application
         run: npm run build
 
-      # Step 4: SSH into EC2 and Install Apache HTTPD and other dependencies
+      # Step 4: Write SSH private key to file and set permissions
+      - name: Write SSH private key to file
+        run: |
+          echo "$EC2_SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+        env:
+          EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+      # Step 5: SSH into EC2 and Install Apache HTTPD and other dependencies
       - name: Install Apache and set up reverse proxy
         run: |
-          ssh -o StrictHostKeyChecking=no -i ${{ secrets.EC2_SSH_PRIVATE_KEY }} ubuntu@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
             # Update and install dependencies
             sudo apt update
             sudo apt install -y apache2
@@ -71,8 +79,8 @@ jobs:
             pm2 start npm --name "node-app" -- run server
             pm2 startup
             pm2 save
-            EOF
+          EOF
 
-      # Step 5: Notify Deployment Success
+      # Step 6: Notify Deployment Success
       - name: Notify Deployment Success
         run: echo "Deployment was successful!"
