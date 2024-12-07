@@ -28,8 +28,9 @@ jobs:
         run: npm run build
 
       # Step 4: Write SSH private key to file and set permissions
-      - name: Write SSH private key to file
+      - name: Create SSH directory and write SSH private key
         run: |
+          mkdir -p ~/.ssh  # Create the .ssh directory if it doesn't exist
           echo "$EC2_SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
         env:
