@@ -57,12 +57,12 @@ jobs:
                 DocumentRoot /var/www/html
 
                 # Reverse Proxy Setup
-                ProxyPass / http://localhost:3000/
-                ProxyPassReverse / http://localhost:3000/
+                ProxyPass / http://3.14.245.182:3000/
+                ProxyPassReverse / http://3.14.245.182:3000/
 
                 # Optional: Allow WebSocket connections
-                ProxyPass /ws/ ws://localhost:3000/ws/
-                ProxyPassReverse /ws/ ws://localhost:3000/ws/
+                ProxyPass /ws/ ws://3.14.245.182:3000/ws/
+                ProxyPassReverse /ws/ ws://3.14.245.182:3000/ws/
             </VirtualHost>
             " | sudo tee /etc/apache2/sites-available/000-default.conf
 
